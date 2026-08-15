@@ -40,6 +40,11 @@ ZCode ──→ 本地代理(127.0.0.1:8788) ──→ 上游(opencode / deepsee
 
 ## 快速开始
 
+### 0. 环境要求
+
+- **Node.js 18 或更高**(自带 `fetch`,无任何依赖包)
+- 本地端口 **8788** 可用(如被占用,见下方「端口被占用」)
+
 ### 1. 选择上游并启动
 
 编辑 `config.json`:
@@ -69,6 +74,10 @@ start.bat deepseek
 ```
 
 看到 `ZCode 工具链渐进解锁代理已启动` 即成功。
+
+> **端口被占用?** 修改 `config.json` 的 `port`(或环境变量 `PORT`)换一个端口,并把客户端 Base URL 同步改掉;也可以先找到占用者:`netstat -ano | findstr 8788`(Windows)或 `lsof -i :8788`(Linux/macOS),用 PID 结束该进程。
+>
+> **Windows 防火墙提示?** 代理只监听 `127.0.0.1`(本机回环),通常不会触发防火墙弹窗;若弹窗出现,允许即可(仅本机访问)。
 
 ### 2. 在客户端中添加模型
 
@@ -119,7 +128,17 @@ start.bat deepseek
 | — | `DUMP_DIR` | 关闭 | 调试转储:转发给上游的请求体(JSON 美化)写入该目录 |
 | — | `LOG_FILE` | 关闭 | 日志文件路径 |
 
-### 运行时热切换(不重启)
+## 切换与运维
+
+| 操作 | 方式 | 生效时机 |
+|---|---|---|
+| **切换上游**(opencode ⇄ deepseek ⇄ 自定义) | 改 `config.json` 的 `upstream`,或 `start.bat deepseek` 参数启动 | **需重启代理**;切换后建议新开会话 |
+| **切换工具描述模式**(full ⇄ smart) | `POST /admin/toolDescMode`(见下) | **热切换,即时生效**,不重启、不清会话 |
+| 查看运行状态 | 浏览器打开 `http://127.0.0.1:8788/status`(统计/配置)或 `/admin`(精简模式/会话数) | 实时 |
+| 查看日志 | 控制台实时输出;设 `LOG_FILE` 可落盘 | — |
+| **停止代理** | 前台运行:按 `Ctrl+C`;后台运行(Windows):`taskkill //PID <进程号> //F`(PID 从 `netstat -ano \| findstr 8788` 获取) | — |
+
+### 工具描述模式热切换(不重启)
 
 工具描述模式支持**运行时热切换**,无需重启、不清空会话解锁状态:
 
@@ -167,6 +186,15 @@ node test_e2e.mjs   # 本地端到端测试(不触网,PROXY_PORT 可改端口避
 
 ## 常见问题
 
+**Q: 客户端连不上代理 / 提示连接失败?**
+A: 按顺序排查:① 代理是否在运行(浏览器打开 `http://127.0.0.1:8788/status`,返回 `"status":"ok"` 即正常);② 客户端 Base URL 是否与代理端口一致(默认 `http://127.0.0.1:8788`);③ Base URL 带 `/v1` 也没关系(代理已做路径归一化),但不要填成代理端口以外的地址;④ 检查代理控制台是否有报错输出。
+
+**Q: 请求返回 502?**
+A: 上游网络瞬时故障,代理会打印 `代理转发失败: fetch failed`,稍后重试即可;若持续失败,检查 `UPSTREAM_BASE_URL` 可达性(直连测试)与 API Key 有效性。
+
+**Q: 上游的 API Key 从哪来?**
+A: 代理本身不提供 Key,沿用你客户端原来直连该上游时使用的 Key。opencode 网关在 [opencode.ai](https://opencode.ai) 获取;DeepSeek 官方在 [platform.deepseek.com](https://platform.deepseek.com) 获取。
+
 **Q: 解锁后模型不知道我的 AGENTS.md 规则了?**
 A: 设计如此——AGENTS.md 与 plan 提示等注入在解锁后仍被过滤,以保持思维链干净。如确需恢复,将 `unlockKeepMinimal` / `unlockKeepSkills` 设为 `false` 可退回「完全透传」。
 
@@ -175,6 +203,9 @@ A: 能。代理不绑定工具清单,新工具由客户端自动加入请求,解
 
 **Q: 切换模型需要重启代理吗?**
 A: 不需要。代理与模型无关,`model` 字段原样透传;切换后新开会话即可。
+
+**Q: 一次典型会话应该是什么样?**
+A: 新开会话 → 首轮请求日志显示 `状态=受限(Bash/Read)`(模型只看到两个工具)→ 模型调用 Bash 或 Read → 下一请求日志 `状态=解锁` → 之后 `状态=已解锁`,工具全量可见,skills 注入恢复。
 
 ## 许可证
 
