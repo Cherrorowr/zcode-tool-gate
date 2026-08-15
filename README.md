@@ -102,11 +102,17 @@ start.bat deepseek
   "minimalSystemPrompt": "You are a helpful software engineer assistant.",
   "unlockKeepMinimal": true,
   "unlockKeepSkills": true,
+  "unlockKeepAgentsMd": false,
   "toolDescMode": "full",
-  "restricted": 0,
-  "unlocked": 0
+  "restrictedRequests": 0,
+  "unlockedRequests": 0,
+  "activeSessions": 0,
+  "restrictedSessions": 0,
+  "unlockedSessions": 0
 }
 ```
+
+> `restrictedRequests` / `unlockedRequests` 是**累计请求计数**(启动以来,只增);`activeSessions` / `restrictedSessions` / `unlockedSessions` 是**当前会话状态分布**(实时)。
 
 代理日志中:受限期请求显示 `状态=受限(Bash/Read)`,调用过白名单工具后 `状态=解锁`,之后为 `状态=已解锁`。
 
