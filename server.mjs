@@ -490,6 +490,7 @@ if (isMain) {
   server.listen(PORT, '127.0.0.1', () => {
     log(`ZCode 工具链渐进解锁代理已启动: http://127.0.0.1:${PORT} -> ${UPSTREAM}`);
     log(`受限期工具: ${ALLOWED_TOOLS.join('/')} | 注入剥离: ${STRIP_INJECTIONS ? '开' : '关'} | 解锁: ${ENABLE_UNLOCK ? '开' : '关'}`);
+    log(`解锁后: 极简提示词 ${UNLOCK_KEEP_MINIMAL ? '开' : '关'} | skills保留 ${UNLOCK_KEEP_SKILLS ? '开' : '关'} | 工具描述模式: ${toolDescMode}`);
   });
 }
 
