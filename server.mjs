@@ -90,7 +90,8 @@ const UNLOCK_KEEP_SKILLS = toBool(pick('unlockKeepSkills', 'UNLOCK_KEEP_SKILLS',
 //   smart = 修正版 L1:高频防误用工具(Bash/Read/Write/Edit/Skill)完整保留,
 //           复杂参数工具(Cron/AskUserQuestion/Agent/Enter·ExitPlanMode)工具级描述压成一句、参数描述保留,
 //           其余系统工具描述压成一句、参数描述截断 40 字符,MCP 工具不动。
-const TOOL_DESC_MODE = String(pick('toolDescMode', 'TOOL_DESC_MODE', 'full')).toLowerCase();
+// 支持运行时热切换(POST /admin/toolDescMode),不重启、不清会话状态
+let toolDescMode = String(pick('toolDescMode', 'TOOL_DESC_MODE', 'full')).toLowerCase();
 const DUMP_DIR = process.env.DUMP_DIR || '';
 const LOG_FILE = process.env.LOG_FILE || '';
 
@@ -302,7 +303,7 @@ function applyUnlockedPolicy(parsed, isNewUnlock) {
     }
   }
   // 工具描述精简(L1 smart 模式):保持工具能力与安全,压缩方法论型描述
-  if (TOOL_DESC_MODE === 'smart' && slimTools(parsed.tools)) changed = true;
+  if (toolDescMode === 'smart' && slimTools(parsed.tools)) changed = true;
   return { parsed, changed, unlocked: true, isNewUnlock };
 }
 
@@ -333,9 +334,20 @@ const server = http.createServer(async (req, res) => {
       stripAllReminders: STRIP_ALL_REMINDERS,
       stripInjections: STRIP_INJECTIONS, enableUnlock: ENABLE_UNLOCK,
       unlockKeepMinimal: UNLOCK_KEEP_MINIMAL, unlockKeepSkills: UNLOCK_KEEP_SKILLS,
-      toolDescMode: TOOL_DESC_MODE,
+      toolDescMode,
       restricted: statRestricted, unlocked: statUnlocked,
       strippedInjections: statStrippedInjections, sessions: sessions.size,
+    }, null, 2));
+    return;
+  }
+
+  // 管理接口:GET /admin 查看配置;POST /admin/toolDescMode {"mode":"smart|full"} 热切换
+  if (req.method === 'GET' && req.url === '/admin') {
+    res.writeHead(200, { 'content-type': 'application/json' });
+    res.end(JSON.stringify({
+      toolDescMode, port: PORT, upstream: UPSTREAM,
+      unlockKeepMinimal: UNLOCK_KEEP_MINIMAL, unlockKeepSkills: UNLOCK_KEEP_SKILLS,
+      restricted: statRestricted, unlocked: statUnlocked, sessions: sessions.size,
     }, null, 2));
     return;
   }
@@ -351,6 +363,27 @@ const server = http.createServer(async (req, res) => {
     for await (const c of req) chunks.push(c);
     if (aborted) return;
     const raw = Buffer.concat(chunks);
+
+    // 工具描述模式热切换(不重启、不清会话状态)
+    if (req.method === 'POST' && req.url === '/admin/toolDescMode') {
+      try {
+        const { mode } = JSON.parse(raw.toString('utf8') || '{}');
+        if (mode === 'smart' || mode === 'full') {
+          toolDescMode = mode;
+          log(`工具描述模式已热切换为: ${mode}(原会话状态保留)`);
+          res.writeHead(200, { 'content-type': 'application/json' });
+          res.end(JSON.stringify({ ok: true, toolDescMode: mode }));
+        } else {
+          res.writeHead(400, { 'content-type': 'application/json' });
+          res.end(JSON.stringify({ error: 'mode 必须为 "smart" 或 "full"' }));
+        }
+        return;
+      } catch {
+        res.writeHead(400, { 'content-type': 'application/json' });
+        res.end(JSON.stringify({ error: '请求体需为 JSON: {"mode":"smart"}' }));
+        return;
+      }
+    }
 
     // 路径归一化:若上游 baseURL 以 /v1 结尾(如 .../zen/go/v1),而请求路径也以 /v1 开头
     // (ZCode 界面填 baseURL 时可能习惯性带 /v1),则去掉请求路径的前导 /v1,避免 /v1/v1 重复。

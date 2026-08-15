@@ -117,6 +117,20 @@ assert.equal(st.status, 'ok');
 assert.equal(st.restricted, 2, '受限计数应为 2');
 assert.equal(st.unlocked, 1, '解锁计数应为 1');
 
+// ---- 场景 5:工具描述模式热切换(不重启) ----
+const sw = await fetch(`http://127.0.0.1:${PROXY_PORT}/admin/toolDescMode`, {
+  method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ mode: 'smart' }),
+}).then((r) => r.json());
+assert.equal(sw.ok, true, '热切换应成功');
+assert.equal(sw.toolDescMode, 'smart', '切换后应为 smart');
+const admin = await fetch(`http://127.0.0.1:${PROXY_PORT}/admin`).then((r) => r.json());
+assert.equal(admin.toolDescMode, 'smart', 'GET /admin 应反映当前模式');
+// 非法模式应 400
+const bad = await fetch(`http://127.0.0.1:${PROXY_PORT}/admin/toolDescMode`, {
+  method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ mode: 'xxx' }),
+});
+assert.equal(bad.status, 400, '非法模式应返回 400');
+
 console.log('端到端测试全部通过 ✓ (首轮受限→调用解锁→未调用持续受限→注入剥离)');
 server.close(() => {
   echo.close(() => process.exit(0));

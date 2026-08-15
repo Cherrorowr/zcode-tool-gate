@@ -119,6 +119,23 @@ start.bat deepseek
 | — | `DUMP_DIR` | 关闭 | 调试转储:转发给上游的请求体(JSON 美化)写入该目录 |
 | — | `LOG_FILE` | 关闭 | 日志文件路径 |
 
+### 运行时热切换(不重启)
+
+工具描述模式支持**运行时热切换**,无需重启、不清空会话解锁状态:
+
+```bash
+# 查看当前配置
+curl http://127.0.0.1:8788/admin
+
+# 热切换到 smart(L1 精简)
+curl -X POST http://127.0.0.1:8788/admin/toolDescMode -H "Content-Type: application/json" -d '{"mode":"smart"}'
+
+# 热切回 full(原样)
+curl -X POST http://127.0.0.1:8788/admin/toolDescMode -H "Content-Type: application/json" -d '{"mode":"full"}'
+```
+
+适合 A/B 对比:同一会话内即时开关,观察模型行为差异。
+
 ### `toolDescMode=smart`(L1 精简)规则
 
 | 类别 | 工具 | 处理 |
