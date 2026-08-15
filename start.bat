@@ -15,14 +15,18 @@ netstat -ano | findstr /C:"127.0.0.1:8788" | findstr /C:"LISTENING" >nul
 if not errorlevel 1 (
     echo.
     echo [warn] Port 8788 is already in use - the proxy is ALREADY RUNNING.
-    echo        This window would have closed instantly before; now you can read this.
+    echo.
+    echo        Current listener on 8788:
+    netstat -ano | findstr /C:"127.0.0.1:8788" | findstr /C:"LISTENING"
     echo.
     echo        What you can do:
     echo          1. Do nothing - the running proxy keeps working.
     echo          2. Stop it first, then start again:
-    echo               stop.bat          (one-click stop)
-    echo               taskkill /PID ^<PID^> /F
-    echo          3. Start on another port: set PORT=8789 ^&^& start.bat
+    echo               stop.bat          - one-click stop
+    echo          3. Start on another port: use "set PORT=8789" then start.bat
+    echo.
+    echo        If you already ran stop.bat and still see this, wait 1-2 seconds
+    echo        for the port release delay, then try start.bat again.
     echo.
     pause
     exit /b 1
