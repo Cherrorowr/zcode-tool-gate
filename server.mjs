@@ -396,17 +396,23 @@ const server = http.createServer(async (req, res) => {
     let body = raw;
     let status = '透传';
     let isNewUnlock = false;
+    let diagSessionKey = '-';
+    let diagTools = '-';
 
     // 仅处理 chat/completions 的 JSON 请求
     if (req.method === 'POST' && /\/chat\/completions$/.test(upstreamUrl.pathname) && raw.length > 0) {
       try {
         const parsed = JSON.parse(raw.toString('utf8'));
         if (parsed && Array.isArray(parsed.messages)) {
+          // 诊断信息:会话键(前 8 位)与工具数变化(请求携带 → 转发)
+          diagSessionKey = (sessionKeyOf(parsed.messages) || '-').slice(0, 8);
+          diagTools = `${Array.isArray(parsed.tools) ? parsed.tools.length : 0}`;
           const result = processBody(parsed);
           isNewUnlock = result.isNewUnlock;
           status = result.unlocked ? (isNewUnlock ? '解锁' : '已解锁') : `受限(${ALLOWED_TOOLS.join('/')})`;
           if (result.changed) body = Buffer.from(JSON.stringify(result.parsed));
           if (result.unlocked) statUnlocked += 1; else statRestricted += 1;
+          diagTools += `->${Array.isArray(result.parsed.tools) ? result.parsed.tools.length : 0}`;
         }
       } catch {
         // 非 JSON 或解析失败:原样转发
@@ -453,7 +459,7 @@ const server = http.createServer(async (req, res) => {
     }
     if (!aborted) res.end();
 
-    log(`状态=${status} ${req.method} ${req.url} -> ${upRes.status} ${Date.now() - started}ms (受限${statRestricted}/解锁${statUnlocked}/剥离注入${statStrippedInjections})`);
+    log(`状态=${status} 会话键=${diagSessionKey} 工具=${diagTools} ${req.method} ${req.url} -> ${upRes.status} ${Date.now() - started}ms (受限${statRestricted}/解锁${statUnlocked}/剥离注入${statStrippedInjections})`);
   } catch (err) {
     log(`错误 ${req.method} ${req.url}: ${err.message}${err.cause ? ' | 原因: ' + (err.cause.code || err.cause.message) : ''}`);
     if (!res.headersSent && !aborted) {
