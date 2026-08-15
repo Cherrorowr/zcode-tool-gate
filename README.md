@@ -75,6 +75,8 @@ start.bat deepseek
 
 看到 `ZCode 工具链渐进解锁代理已启动` 即成功。
 
+**停止代理**:双击 `stop.bat`(一键停止并确认端口释放);或在前台窗口按 `Ctrl+C`。
+
 > **端口被占用?** 修改 `config.json` 的 `port`(或环境变量 `PORT`)换一个端口,并把客户端 Base URL 同步改掉;也可以先找到占用者:`netstat -ano | findstr 8788`(Windows)或 `lsof -i :8788`(Linux/macOS),用 PID 结束该进程。
 >
 > **Windows 防火墙提示?** 代理只监听 `127.0.0.1`(本机回环),通常不会触发防火墙弹窗;若弹窗出现,允许即可(仅本机访问)。
@@ -143,7 +145,7 @@ start.bat deepseek
 | **切换工具描述模式**(full ⇄ smart) | `POST /admin/toolDescMode`(见下) | **热切换,即时生效**,不重启、不清会话 |
 | 查看运行状态 | 浏览器打开 `http://127.0.0.1:8788/status`(统计/配置)或 `/admin`(精简模式/会话数) | 实时 |
 | 查看日志 | 控制台实时输出;设 `LOG_FILE` 可落盘 | — |
-| **停止代理** | 前台运行:按 `Ctrl+C`;后台运行(Windows):`taskkill //PID <进程号> //F`(PID 从 `netstat -ano \| findstr 8788` 获取) | — |
+| **停止代理** | 推荐:`stop.bat`(一键停止并确认端口释放);前台运行按 `Ctrl+C`;手动:`taskkill //PID <进程号> //F`(PID 从 `netstat -ano \| findstr 8788` 获取) | — |
 
 ### 工具描述模式热切换(不重启)
 
