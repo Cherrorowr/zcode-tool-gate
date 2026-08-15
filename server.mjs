@@ -326,6 +326,12 @@ const server = http.createServer(async (req, res) => {
 
   // 健康检查:GET /status
   if (req.method === 'GET' && req.url === '/status') {
+    // 当前会话状态分布(区别于累计请求计数)
+    let restrictedSessions = 0;
+    let unlockedSessions = 0;
+    for (const s of sessions.values()) {
+      if (s.unlocked) unlockedSessions += 1; else restrictedSessions += 1;
+    }
     res.writeHead(200, { 'content-type': 'application/json' });
     res.end(JSON.stringify({
       status: 'ok', port: PORT, upstream: UPSTREAM,
@@ -335,8 +341,13 @@ const server = http.createServer(async (req, res) => {
       stripInjections: STRIP_INJECTIONS, enableUnlock: ENABLE_UNLOCK,
       unlockKeepMinimal: UNLOCK_KEEP_MINIMAL, unlockKeepSkills: UNLOCK_KEEP_SKILLS,
       toolDescMode,
-      restricted: statRestricted, unlocked: statUnlocked,
-      strippedInjections: statStrippedInjections, sessions: sessions.size,
+      // 累计请求计数(启动以来,只增)
+      restrictedRequests: statRestricted, unlockedRequests: statUnlocked,
+      strippedInjections: statStrippedInjections,
+      // 当前会话状态(实时)
+      activeSessions: sessions.size,
+      restrictedSessions,
+      unlockedSessions,
     }, null, 2));
     return;
   }
@@ -352,11 +363,16 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  let aborted = false;
+  let aborted = req.socket?.__gateAborted ?? false;
   // 注意:IncomingMessage 的 'close' 在请求体读完时也会触发,不能用来判定客户端断开;
   // 改用 'aborted'(仅客户端中断触发)与底层 socket 关闭来判定。
+  // socket 复用:仅首次请求注册 close 监听器(挂 socket 属性标记),避免 keep-alive 下
+  // 监听器无限累积触发 MaxListenersExceededWarning。
+  if (req.socket && !req.socket.__gateAbortListener) {
+    req.socket.__gateAbortListener = () => { req.socket.__gateAborted = true; };
+    req.socket.on('close', req.socket.__gateAbortListener);
+  }
   req.on('aborted', () => { aborted = true; });
-  req.socket?.on('close', () => { aborted = true; });
 
   try {
     const chunks = [];
