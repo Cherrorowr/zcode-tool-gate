@@ -1,0 +1,15 @@
+{
+  "port": 8788,
+  "upstream": "opencode",
+  "firstRoundTools": [
+    "Bash",
+    "Read"
+  ],
+  "minimalSystemPrompt": "You are a helpful software engineer assistant.",
+  "stripAllReminders": true,
+  "stripInjections": true,
+  "enableUnlock": true,
+  "unlockKeepMinimal": true,
+  "unlockKeepSkills": true,
+  "toolDescMode": "full"
+}

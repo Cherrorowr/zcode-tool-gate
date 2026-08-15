@@ -1,0 +1,13 @@
+# 忽略本地运行产物
+*.log
+node_modules/
+
+# 调试转储(含真实对话内容)
+dump/
+demo_dump/
+simulate_dump/
+verify_dump/
+
+# 系统文件
+.DS_Store
+Thumbs.db
