@@ -106,6 +106,13 @@ assert.ok(!strippedUnlock.some((m) => m.content === agentsMdMsg), '解锁后:AGE
 assert.ok(!strippedUnlock.some((m) => m.content === planMsg), '解锁后:plan 提示应剥离');
 assert.equal(strippedUnlock.length, msgs.length - 2, '解锁后应剥离 2 条注入(保留 skills+Bash)');
 
+// 解锁后 + keepAgentsMd=true:AGENTS.md 注入也保留
+const strippedUnlockAm = stripInjectedMessages(msgs, 'keep-skills', true);
+assert.ok(strippedUnlockAm.some((m) => m.content === skillsMsg), '开关开:skills 保留');
+assert.ok(strippedUnlockAm.some((m) => m.content === agentsMdMsg), '开关开:AGENTS.md 保留');
+assert.ok(!strippedUnlockAm.some((m) => m.content === planMsg), '开关开:plan 仍剥离');
+assert.equal(strippedUnlockAm.length, msgs.length - 1, '开关开:仅剥离 plan 注入');
+
 // 兼容模式(mode='selective'):仅剥离 skills/AGENTS.md,保留 plan/Bash 提示
 const strippedSel = stripInjectedMessages(msgs, 'selective');
 assert.ok(!strippedSel.some((m) => m.content === skillsMsg), '兼容模式:skills 注入应被剥离');

@@ -11,5 +11,6 @@
   "enableUnlock": true,
   "unlockKeepMinimal": true,
   "unlockKeepSkills": true,
-  "toolDescMode": "full"
+  "toolDescMode": "full",
+  "unlockKeepAgentsMd": false
 }

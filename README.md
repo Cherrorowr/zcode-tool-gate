@@ -124,6 +124,7 @@ start.bat deepseek
 | `enableUnlock` | `ENABLE_UNLOCK` | `true` | `false` 时永远受限 |
 | `unlockKeepMinimal` | `UNLOCK_KEEP_MINIMAL` | `true` | 解锁后系统提示词仍保持极简;`false` 恢复客户端原始提示词 |
 | `unlockKeepSkills` | `UNLOCK_KEEP_SKILLS` | `true` | 解锁后保留 skills 注入;`false` 完全透传 |
+| `unlockKeepAgentsMd` | `UNLOCK_KEEP_AGENTSMd` | `false` | **AGENTS.md 默认过滤**;`true` 时解锁后同时保留 AGENTS.md 注入(全局规则重新生效,但规则文本回到思维路径) |
 | `toolDescMode` | `TOOL_DESC_MODE` | `full` | 解锁后工具描述策略:`full` 原样 / `smart` 名单式精简 |
 | — | `DUMP_DIR` | 关闭 | 调试转储:转发给上游的请求体(JSON 美化)写入该目录 |
 | — | `LOG_FILE` | 关闭 | 日志文件路径 |
@@ -196,7 +197,7 @@ A: 上游网络瞬时故障,代理会打印 `代理转发失败: fetch failed`,�
 A: 代理本身不提供 Key,沿用你客户端原来直连该上游时使用的 Key。opencode 网关在 [opencode.ai](https://opencode.ai) 获取;DeepSeek 官方在 [platform.deepseek.com](https://platform.deepseek.com) 获取。
 
 **Q: 解锁后模型不知道我的 AGENTS.md 规则了?**
-A: 设计如此——AGENTS.md 与 plan 提示等注入在解锁后仍被过滤,以保持思维链干净。如确需恢复,将 `unlockKeepMinimal` / `unlockKeepSkills` 设为 `false` 可退回「完全透传」。
+A: 默认设计如此——AGENTS.md 与 plan 提示等注入在解锁后仍被过滤,以保持思维链干净。如需恢复,将 `unlockKeepAgentsMd` 设为 `true`(解锁后保留 AGENTS.md 注入);或将 `unlockKeepMinimal` / `unlockKeepSkills` 设为 `false` 退回「完全透传」。
 
 **Q: 新增的 MCP / 插件工具能用吗?**
 A: 能。代理不绑定工具清单,新工具由客户端自动加入请求,解锁后原样透传;`smart` 精简模式下未列出的工具也自动完整保留。

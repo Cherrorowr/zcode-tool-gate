@@ -85,6 +85,9 @@ const UNLOCK_KEEP_MINIMAL = toBool(pick('unlockKeepMinimal', 'UNLOCK_KEEP_MINIMA
 // UNLOCK_KEEP_SKILLS=true(默认):解锁后保留 ZCode skills 注入,其余注入
 // (AGENTS.md / plan / Bash 提示等)仍全部过滤。
 const UNLOCK_KEEP_SKILLS = toBool(pick('unlockKeepSkills', 'UNLOCK_KEEP_SKILLS', true), true);
+// UNLOCK_KEEP_AGENTSMd=false(默认):解锁后是否同时保留 AGENTS.md 注入
+// (与 skills 并列的独立开关;开启后你的全局规则重新生效,但规则文本回到思维路径)。
+const UNLOCK_KEEP_AGENTSMd = toBool(pick('unlockKeepAgentsMd', 'UNLOCK_KEEP_AGENTSMd', false), false);
 // TOOL_DESC_MODE:解锁后工具描述精简策略。
 //   full  = 原样保留(默认);
 //   smart = 修正版 L1:高频防误用工具(Bash/Read/Write/Edit/Skill)完整保留,
@@ -149,14 +152,15 @@ export function filterTools(tools, allowed) {
 const SKILLS_RE = /The following skills are available for use/;
 const BASH_SHELL_RE = /The Bash tool shell is Git Bash/;
 const AGENTSMD_RE = /(?:#\s*agentsMd|Contents of .*AGENTS\.md|As you answer the user's questions, you can use the following context)/;
-export function stripInjectedMessages(messages, mode = 'all') {
+// 解锁后过滤:keepAgentsMd=true 时同时保留 AGENTS.md 注入(与 skills 并列)
+export function stripInjectedMessages(messages, mode = 'all', keepAgentsMd = false) {
   return messages.filter((m) => {
     if (!m || m.role !== 'user') return true;
     const text = typeof m.content === 'string' ? m.content : JSON.stringify(m.content || '');
     const isReminder = text.trimStart().startsWith('<system-reminder>');
     if (!isReminder) return true;
     if (BASH_SHELL_RE.test(text)) return true; // Bash shell 提示始终保留
-    if (mode === 'keep-skills') return SKILLS_RE.test(text);
+    if (mode === 'keep-skills') return SKILLS_RE.test(text) || (keepAgentsMd && AGENTSMD_RE.test(text));
     if (mode === 'selective') return !(SKILLS_RE.test(text) || AGENTSMD_RE.test(text));
     return false; // 'all'
   });
@@ -294,8 +298,8 @@ export function processBody(parsed) {
 function applyUnlockedPolicy(parsed, isNewUnlock) {
   let changed = false;
   if (UNLOCK_KEEP_MINIMAL && applyMinimalSystemPrompt(parsed.messages)) changed = true;
-  if (UNLOCK_KEEP_SKILLS) {
-    const filteredMsgs = stripInjectedMessages(parsed.messages, 'keep-skills');
+  if (UNLOCK_KEEP_SKILLS || UNLOCK_KEEP_AGENTSMd) {
+    const filteredMsgs = stripInjectedMessages(parsed.messages, 'keep-skills', UNLOCK_KEEP_AGENTSMd);
     if (filteredMsgs.length !== parsed.messages.length) {
       parsed.messages = filteredMsgs;
       statStrippedInjections += parsed.messages.length - filteredMsgs.length;
@@ -340,6 +344,7 @@ const server = http.createServer(async (req, res) => {
       stripAllReminders: STRIP_ALL_REMINDERS,
       stripInjections: STRIP_INJECTIONS, enableUnlock: ENABLE_UNLOCK,
       unlockKeepMinimal: UNLOCK_KEEP_MINIMAL, unlockKeepSkills: UNLOCK_KEEP_SKILLS,
+      unlockKeepAgentsMd: UNLOCK_KEEP_AGENTSMd,
       toolDescMode,
       // 累计请求计数(启动以来,只增)
       restrictedRequests: statRestricted, unlockedRequests: statUnlocked,
@@ -490,7 +495,7 @@ if (isMain) {
   server.listen(PORT, '127.0.0.1', () => {
     log(`ZCode 工具链渐进解锁代理已启动: http://127.0.0.1:${PORT} -> ${UPSTREAM}`);
     log(`受限期工具: ${ALLOWED_TOOLS.join('/')} | 注入剥离: ${STRIP_INJECTIONS ? '开' : '关'} | 解锁: ${ENABLE_UNLOCK ? '开' : '关'}`);
-    log(`解锁后: 极简提示词 ${UNLOCK_KEEP_MINIMAL ? '开' : '关'} | skills保留 ${UNLOCK_KEEP_SKILLS ? '开' : '关'} | 工具描述模式: ${toolDescMode}`);
+    log(`解锁后: 极简提示词 ${UNLOCK_KEEP_MINIMAL ? '开' : '关'} | skills保留 ${UNLOCK_KEEP_SKILLS ? '开' : '关'} | agentsMd保留 ${UNLOCK_KEEP_AGENTSMd ? '开' : '关'} | 工具描述模式: ${toolDescMode}`);
   });
 }
 

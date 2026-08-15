@@ -81,8 +81,12 @@ const got2 = JSON.parse(received[1].body);
 assert.equal(got2.tools.length, allTools.length, '解锁后全部工具透传');
 assert.equal(got2.messages[0].content, 'You are a helpful software engineer assistant.', '解锁后:系统提示词仍为极简 persona');
 assert.ok(got2.messages.some((m) => m.content === skillsMsg), '解锁后:skills 注入保留');
-assert.ok(!got2.messages.some((m) => m.content === agentsMdMsg), '解锁后:AGENTS.md 注入剥离');
-assert.equal(got2.messages.length, 6, '解锁后剥离 AGENTS.md(system+skills+user+assistant+tool+user)');
+if (process.env.UNLOCK_KEEP_AGENTSMd === 'true') {
+  assert.ok(got2.messages.some((m) => m.content === agentsMdMsg), '开关开:AGENTS.md 注入保留');
+} else {
+  assert.ok(!got2.messages.some((m) => m.content === agentsMdMsg), '解锁后:AGENTS.md 注入剥离');
+}
+assert.equal(got2.messages.length, process.env.UNLOCK_KEEP_AGENTSMd === 'true' ? 7 : 6, '解锁后消息数(开关开=7/关=6)');
 
 // smart 模式(L1):解锁后 EnterPlanMode 描述压成一句,Bash 描述保留
 if (process.env.TOOL_DESC_MODE === 'smart') {
@@ -114,8 +118,8 @@ assert.equal(got3.messages.length, 4, '受限期注入剥离(system+2条user+ass
 // ---- 场景 4:健康检查 ----
 const st = await fetch(`http://127.0.0.1:${PROXY_PORT}/status`).then((r) => r.json());
 assert.equal(st.status, 'ok');
-assert.equal(st.restricted, 2, '受限计数应为 2');
-assert.equal(st.unlocked, 1, '解锁计数应为 1');
+assert.equal(st.restrictedRequests, 2, '受限计数应为 2');
+assert.equal(st.unlockedRequests, 1, '解锁计数应为 1');
 
 // ---- 场景 5:工具描述模式热切换(不重启) ----
 const sw = await fetch(`http://127.0.0.1:${PROXY_PORT}/admin/toolDescMode`, {
